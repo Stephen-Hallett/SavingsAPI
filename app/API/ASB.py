@@ -21,13 +21,24 @@ class Controller:
 
     @log
     @handle_missing
-    def get_portfolio_value(self) -> float:
+    def get_12_month_value(self) -> float:
         account = requests.get(
-            f"{self.akahu_url}/accounts/{os.environ['SHARESIES_ID']}",
+            f"{self.akahu_url}/accounts/{os.environ['ASB_12_MONTH_ID']}",
             headers=self.headers,
             timeout=5,
         ).json()
         return account["item"]["balance"]["current"]
 
+    @log
+    @handle_missing
+    def get_6_month_value(self) -> float:
+        account = requests.get(
+            f"{self.akahu_url}/accounts/{os.environ['ASB_6_MONTH_ID']}",
+            headers=self.headers,
+            timeout=5,
+        ).json()
+        return account["item"]["balance"]["current"]
+
+    @log
     def get_account_value(self) -> float:
-        return round(self.get_portfolio_value(), 2)
+        return round(self.get_12_month_value() + self.get_6_month_value(), 2)

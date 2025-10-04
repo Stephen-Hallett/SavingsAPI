@@ -23,11 +23,22 @@ class Controller:
     @handle_missing
     def get_portfolio_value(self) -> float:
         account = requests.get(
-            f"{self.akahu_url}/accounts/{os.environ['SHARESIES_ID']}",
+            f"{self.akahu_url}/accounts/{os.environ['KERNEL_FUND_ID']}",
             headers=self.headers,
             timeout=5,
         ).json()
         return account["item"]["balance"]["current"]
 
+    @log
+    @handle_missing
+    def get_save_value(self) -> float:
+        account = requests.get(
+            f"{self.akahu_url}/accounts/{os.environ['KERNEL_SAVE_ID']}",
+            headers=self.headers,
+            timeout=5,
+        ).json()
+        return account["item"]["balance"]["current"]
+
+    @log
     def get_account_value(self) -> float:
-        return round(self.get_portfolio_value(), 2)
+        return round(self.get_portfolio_value() + self.get_save_value(), 2)

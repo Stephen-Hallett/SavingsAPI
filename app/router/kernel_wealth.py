@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from ..API.sharesies import Controller
+from ..API.kernel_wealth import Controller
 from ..utils.logger import MyLogger
 
 router = APIRouter()

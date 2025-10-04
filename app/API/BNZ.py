@@ -21,13 +21,14 @@ class Controller:
 
     @log
     @handle_missing
-    def get_portfolio_value(self) -> float:
+    def get_rapid_save_value(self) -> float:
         account = requests.get(
-            f"{self.akahu_url}/accounts/{os.environ['SHARESIES_ID']}",
+            f"{self.akahu_url}/accounts/{os.environ['BNZ_SAVE_ID']}",
             headers=self.headers,
             timeout=5,
         ).json()
-        return account["item"]["balance"]["current"]
+        return account["item"]["balance"]["available"]
 
+    @log
     def get_account_value(self) -> float:
-        return round(self.get_portfolio_value(), 2)
+        return round(self.get_rapid_save_value(), 2)
