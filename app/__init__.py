@@ -7,6 +7,7 @@ from .router.BNZ import router as BNZRouter
 from .router.investnow import router as InvestnowRouter
 from .router.kernel_wealth import router as KernelRouter
 from .router.sharesies import router as SharesiesRouter
+from .router.simplicity import router as SimplicityRouter
 from .utils.logger import MyLogger
 
 app = FastAPI()
@@ -24,6 +25,7 @@ app.include_router(ASBRouter, prefix="/asb")
 app.include_router(BNZRouter, prefix="/bnz")
 app.include_router(KernelRouter, prefix="/kernel")
 app.include_router(SharesiesRouter, prefix="/sharesies")
+app.include_router(SimplicityRouter, prefix="/simplicity")
 app.include_router(InvestnowRouter, prefix="/investnow")
 
 
