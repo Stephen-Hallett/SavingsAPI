@@ -1,0 +1,72 @@
+services:
+  postgres:
+    image: timescale/timescaledb:latest-pg17
+    container_name: ${POSTGRES_DB}
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PW}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/initdb.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - transaction_network
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: API
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PW: ${POSTGRES_PW}
+      POSTGRES_HOST: ${POSTGRES_DB}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      KERNEL_FUND_ID: ${KERNEL_FUND_ID}
+      KERNEL_SAVE_ID: ${KERNEL_SAVE_ID}
+      SHARESIES_ID: ${SHARESIES_ID}
+      SIMPLICITY_ID: ${SIMPLICITY_ID}
+      BNZ_SAVE_ID: ${BNZ_SAVE_ID}
+      ASB_12_MONTH_ID: ${ASB_12_MONTH_ID}
+      ASB_6_MONTH_ID: ${ASB_6_MONTH_ID}
+      INVESTNOW_USER: ${INVESTNOW_USER}
+      INVESTNOW_PASS: ${INVESTNOW_PASS}
+      AKAHU_ID: ${AKAHU_ID}
+      AUTH_TOKEN: ${AUTH_TOKEN}
+
+    ports:
+      - "${BACKEND_PORT}:8000"
+    restart: always
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'python -c ''import sys,urllib.request; sys.exit(0) if urllib.request.urlopen("http://localhost:8000/health").status==200 else sys.exit(1)''',
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    networks:
+      - transaction_network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  transaction_network:
+    driver: bridge
