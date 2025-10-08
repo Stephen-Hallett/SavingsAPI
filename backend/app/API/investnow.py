@@ -37,7 +37,6 @@ class Controller:
             "username": os.environ["INVESTNOW_USER"],
             "password": os.environ["INVESTNOW_PASS"],
         }
-        print(payload)
         if passcode is not None:
             payload["passcode"] = passcode
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
@@ -61,7 +60,7 @@ class Controller:
             headers=headers,
             timeout=5,
         ).json()
-        return res["netAssetValue"]["value"]
+        return float(res["netAssetValue"]["value"])
 
     @log
     def get_account_value(self, token: str) -> float:

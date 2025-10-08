@@ -46,6 +46,7 @@ services:
       INVESTNOW_PASS: ${INVESTNOW_PASS}
       AKAHU_ID: ${AKAHU_ID}
       AUTH_TOKEN: ${AUTH_TOKEN}
+      SAVE_TIME: ${SAVE_TIME}
 
     ports:
       - "${BACKEND_PORT}:8000"

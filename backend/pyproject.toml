@@ -5,7 +5,7 @@ description = "API to interact with all of my savings locations"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "fastapi-utilities>=0.3.1",
+    "apscheduler>=3.11.0",
     "fastapi[standard]>=0.118.0",
     "psycopg2-binary>=2.9.10",
     "pydantic-settings>=2.11.0",
