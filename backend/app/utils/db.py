@@ -1,11 +1,20 @@
+import datetime
 import os
 from typing import Any
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from pydantic import BaseModel
 
 
-class BaseDB:
+class SavingsRow(BaseModel):
+    time: datetime.datetime
+    platform: str
+    account: str
+    amount: float
+
+
+class SavingsDB:
     def __init__(
         self,
         host: str = os.environ["POSTGRES_HOST"],
@@ -26,7 +35,7 @@ class BaseDB:
         """Get database connection."""
         return psycopg2.connect(**self.connection_params)  # pyright: ignore
 
-    def insert(self) -> None:
+    def insert(self, item: SavingsRow) -> None:
         with (
             self.get_connection() as conn,
             conn.cursor(cursor_factory=RealDictCursor) as cur,
@@ -35,6 +44,7 @@ class BaseDB:
                 """
                     INSERT INTO savings (time, platform, account, amount)
                     VALUES (%s, %s, %s, %s)
-                """
+                """,
+                (item.time, item.platform, item.account, item.amount),
             )
-            print([dict(row) for row in cur.fetchall()])
+            conn.commit()
