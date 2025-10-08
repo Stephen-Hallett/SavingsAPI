@@ -2,10 +2,16 @@ from datetime import datetime
 
 import pytz
 from fastapi import APIRouter, Query
+from pydantic import BaseModel
 
 from ..API.investnow import Controller
 from ..utils.db import SavingsDB, SavingsRow
 from ..utils.logger import MyLogger
+
+
+class Token(BaseModel):
+    token: str
+
 
 router = APIRouter()
 logger = MyLogger().get_logger()
@@ -18,12 +24,12 @@ tz = pytz.timezone("Pacific/Auckland")
 
 
 @router.post("/save")
-async def save_data(token: str) -> None:
+async def save_data(token: Token) -> None:
     portfolio = SavingsRow(
         time=datetime.now(tz=tz),
         platform="InvestNow",
         account="Portfolio",
-        amount=con.get_portfolio_value(token),
+        amount=con.get_portfolio_value(token.token),
     )
     db_con.insert(portfolio)
 
@@ -34,5 +40,5 @@ async def get_token(passcode: int | None = Query(None)) -> str:
 
 
 @router.get("/value")
-async def value(token: str) -> float:
-    return con.get_account_value(token)
+async def value(token: Token) -> float:
+    return con.get_account_value(token.token)
