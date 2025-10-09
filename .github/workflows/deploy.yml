@@ -28,8 +28,6 @@ jobs:
             fi \
             && cd /home/stephen/SavingsAPI \
             && git pull \
-            && cat > .env << 'EOF'
-${{ secrets.ENV }}
-EOF
+            && printf \"%s\" \"${{ secrets.ENV }}\" > .env \
             && docker compose up -d --build
           "
