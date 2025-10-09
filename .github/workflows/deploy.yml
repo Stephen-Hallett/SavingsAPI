@@ -24,7 +24,7 @@ jobs:
         run: |
           ssh -o "StrictHostKeyChecking no" ${{ secrets.VPS_USER }}@apps "
             if [ ! -d /home/stephen/SavingsAPI/.git ]; then
-                git clone git@github.com:Stephen-Hallett/SavingsAPI.git /home/stephen/SavingsAPI;
+                git clone https://github.com/Stephen-Hallett/SavingsAPI.git /home/stephen/SavingsAPI;
             fi \
             && cd /home/stephen/SavingsAPI \
             && git pull \
