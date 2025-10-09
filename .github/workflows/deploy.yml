@@ -23,7 +23,7 @@ jobs:
       - name: Redeploy App
         run: |
           ssh -o "StrictHostKeyChecking no" ${{ secrets.VPS_USER }}@apps "
-            cd SavingsAPI \
+            cd /home/stephen/SavingsAPI \
             && git pull \
             && echo '${{ secrets.ENV }}' > .env \
             && docker compose up -d --build
