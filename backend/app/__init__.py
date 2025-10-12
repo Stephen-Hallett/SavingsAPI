@@ -8,6 +8,7 @@ from .router.investnow import router as InvestnowRouter
 from .router.kernel_wealth import router as KernelRouter
 from .router.sharesies import router as SharesiesRouter
 from .router.simplicity import router as SimplicityRouter
+from .utils.db import SavingsDB
 from .utils.logger import MyLogger
 
 app = FastAPI()
@@ -20,6 +21,7 @@ app.add_middleware(
 )
 
 logger = MyLogger().get_logger()
+db_con = SavingsDB()
 
 app.include_router(ASBRouter, prefix="/asb")
 app.include_router(BNZRouter, prefix="/bnz")
@@ -27,6 +29,12 @@ app.include_router(KernelRouter, prefix="/kernel")
 app.include_router(SharesiesRouter, prefix="/sharesies")
 app.include_router(SimplicityRouter, prefix="/simplicity")
 app.include_router(InvestnowRouter, prefix="/investnow")
+
+
+@app.get("/portfolio")
+def portfolio_value() -> dict[str, dict | float]:
+    print("Getting portfolio value")
+    return db_con.current_portfolio()
 
 
 @app.get("/health")

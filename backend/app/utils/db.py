@@ -48,3 +48,27 @@ class SavingsDB:
                 (item.time, item.platform, item.account, item.amount),
             )
             conn.commit()
+
+    def current_portfolio(self) -> dict[str, dict | float]:
+        with (
+            self.get_connection() as conn,
+            conn.cursor(cursor_factory=RealDictCursor) as cur,
+        ):
+            cur.execute("""
+                        SELECT platform, sum(amount) AS total
+                        FROM
+                        (SELECT *
+                            FROM (
+                            SELECT *,
+                                    ROW_NUMBER() OVER (
+                                    PARTITION BY account, platform
+                                    ORDER BY time DESC
+                                    ) AS rn
+                            FROM savings
+                            ) sub
+                            WHERE rn = 1)
+                        GROUP BY platform
+                    """)
+            result = cur.fetchall()
+            holdings = {row["platform"]: round(row["total"], 2) for row in result}
+            return {"holdings": holdings, "total": round(sum(holdings.values()), 2)}
