@@ -71,4 +71,8 @@ class SavingsDB:
                     """)
             result = cur.fetchall()
             holdings = {row["platform"]: round(row["total"], 2) for row in result}
-            return {"holdings": holdings, "total": round(sum(holdings.values()), 2)}
+            total = round(sum(holdings.values()), 2)
+            weights = {
+                key: round(100 * (value / total), 1) for key, value in holdings.items()
+            }
+            return {"holdings": holdings, "weightings": weights, "total": total}
