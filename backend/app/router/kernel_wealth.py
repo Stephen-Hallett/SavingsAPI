@@ -21,13 +21,13 @@ tz = pytz.timezone("Pacific/Auckland")
 
 def save_data() -> None:
     save = SavingsRow(
-        time=datetime.now(tz=tz),
+        time=datetime.now(tz=pytz.timezone("UTC")),
         platform="Kernel Wealth",
         account="Save",
         amount=con.get_save_value(),
     )
     portfolio = SavingsRow(
-        time=datetime.now(tz=tz),
+        time=datetime.now(tz=pytz.timezone("UTC")),
         platform="Kernel Wealth",
         account="Portfolio",
         amount=con.get_portfolio_value(),

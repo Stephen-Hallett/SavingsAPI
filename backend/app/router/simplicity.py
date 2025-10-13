@@ -21,7 +21,7 @@ tz = pytz.timezone("Pacific/Auckland")
 
 def save_data() -> None:
     kiwisaver = SavingsRow(
-        time=datetime.now(tz=tz),
+        time=datetime.now(tz=pytz.timezone("UTC")),
         platform="Simplicity",
         account="Kiwisaver",
         amount=con.get_portfolio_value(),

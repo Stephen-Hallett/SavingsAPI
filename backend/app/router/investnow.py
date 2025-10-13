@@ -20,13 +20,11 @@ con = Controller()
 
 
 db_con = SavingsDB()
-tz = pytz.timezone("Pacific/Auckland")
-
 
 @router.post("/save")
 async def save_data(token: Token) -> None:
     portfolio = SavingsRow(
-        time=datetime.now(tz=tz),
+        time=datetime.now(tz=pytz.timezone('UTC')),
         platform="InvestNow",
         account="Portfolio",
         amount=con.get_portfolio_value(token.token),

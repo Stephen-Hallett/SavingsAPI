@@ -21,13 +21,13 @@ tz = pytz.timezone("Pacific/Auckland")
 
 def save_data() -> None:
     td_6 = SavingsRow(
-        time=datetime.now(tz=tz),
+        time=datetime.now(tz=pytz.timezone("UTC")),
         platform="ASB",
         account="6 month term deposit",
         amount=con.get_6_month_value(),
     )
     td_12 = SavingsRow(
-        time=datetime.now(tz=tz),
+        time=datetime.now(tz=pytz.timezone("UTC")),
         platform="ASB",
         account="12 month term deposit",
         amount=con.get_12_month_value(),
@@ -59,21 +59,3 @@ router = APIRouter(lifespan=lifespan)
 @router.get("/value")
 async def value() -> float:
     return con.get_account_value()
-
-
-@router.get("/test")
-async def save_data_test() -> None:
-    td_6 = {
-        "time": datetime.now(tz=tz),
-        "platform": "ASB",
-        "account": "6 month term deposit",
-        "amount": con.get_6_month_value(),
-    }
-    td_12 = {
-        "time": datetime.now(tz=tz),
-        "platform": "ASB",
-        "account": "12 month term deposit",
-        "amount": con.get_12_month_value(),
-    }
-    db_con.insert(td_6)
-    db_con.insert(td_12)

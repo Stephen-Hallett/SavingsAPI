@@ -21,7 +21,7 @@ tz = pytz.timezone("Pacific/Auckland")
 
 def save_data() -> None:
     rapid_save = SavingsRow(
-        time=datetime.now(tz=tz),
+        time=datetime.now(tz=pytz.timezone("UTC")),
         platform="BNZ",
         account="Rapid Save",
         amount=con.get_rapid_save_value(),

@@ -21,7 +21,7 @@ tz = pytz.timezone("Pacific/Auckland")
 
 def save_data() -> None:
     portfolio = SavingsRow(
-        time=datetime.now(tz=tz),
+        time=datetime.now(tz=pytz.timezone("UTC")),
         platform="Sharesies",
         account="Portfolio",
         amount=con.get_portfolio_value(),
