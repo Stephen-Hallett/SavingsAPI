@@ -3,6 +3,7 @@ import os
 from typing import Any
 
 import psycopg2
+import pytz
 from psycopg2.extras import RealDictCursor
 from pydantic import BaseModel
 
@@ -50,29 +51,134 @@ class SavingsDB:
             conn.commit()
 
     def current_portfolio(self) -> dict[str, dict | float]:
+        # Pacific/Auckland timezone
+        now_nz = datetime.datetime.now(tz=pytz.timezone("Pacific/Auckland"))
+
         with (
             self.get_connection() as conn,
             conn.cursor(cursor_factory=RealDictCursor) as cur,
         ):
-            cur.execute("""
-                        SELECT platform, sum(amount) AS total
-                        FROM
-                        (SELECT *
-                            FROM (
-                            SELECT *,
-                                    ROW_NUMBER() OVER (
-                                    PARTITION BY account, platform
-                                    ORDER BY time DESC
-                                    ) AS rn
-                            FROM savings
-                            ) sub
-                            WHERE rn = 1)
-                        GROUP BY platform
-                    """)
+            # Get latest for each account/platform for today and yesterday (NZ time)
+            cur.execute(
+                """
+WITH latest_per_day AS (
+    SELECT
+        *,
+        ROW_NUMBER() OVER (
+            PARTITION BY account, platform, timezone('Pacific/Auckland', time)::date
+            ORDER BY time DESC
+        ) AS rn,
+        timezone('Pacific/Auckland', time)::date AS nz_date
+    FROM savings
+),
+daily_totals AS (
+    SELECT
+        platform,
+        account,
+        amount,
+        nz_date,
+        %s::date - nz_date AS days_ago
+    FROM latest_per_day
+    WHERE rn = 1
+),
+today AS (
+    SELECT platform, account, amount
+    FROM daily_totals
+    WHERE days_ago = 0
+),
+yesterday AS (
+    SELECT platform, account, amount
+    FROM daily_totals
+    WHERE days_ago = 1
+),
+one_month_ago AS (
+    SELECT DISTINCT ON (platform, account)
+        platform, account, amount
+    FROM daily_totals
+    WHERE days_ago >= 30
+    ORDER BY platform, account, days_ago ASC
+),
+one_month_ago_fallback AS (
+    SELECT DISTINCT ON (platform, account)
+        platform, account, amount
+    FROM daily_totals
+    WHERE days_ago < 30
+    ORDER BY platform, account, days_ago DESC
+),
+one_year_ago AS (
+    SELECT DISTINCT ON (platform, account)
+        platform, account, amount
+    FROM daily_totals
+    WHERE days_ago >= 365
+    ORDER BY platform, account, days_ago ASC
+),
+one_year_ago_fallback AS (
+    SELECT DISTINCT ON (platform, account)
+        platform, account, amount
+    FROM daily_totals
+    WHERE days_ago < 365
+    ORDER BY platform, account, days_ago DESC
+)
+SELECT
+    COALESCE(t.platform, y.platform, m.platform, mf.platform, yr.platform, yf.platform) AS platform,
+    COALESCE(MAX(t.amount), 0) AS today,
+    COALESCE(MAX(y.amount), 0) AS yesterday,
+    COALESCE(MAX(m.amount), MAX(mf.amount), 0) AS one_month_ago,
+    COALESCE(MAX(yr.amount), MAX(yf.amount), 0) AS one_year_ago
+FROM today t
+FULL OUTER JOIN yesterday y
+    ON t.platform = y.platform AND t.account = y.account
+FULL OUTER JOIN one_month_ago m
+    ON COALESCE(t.platform, y.platform) = m.platform
+    AND COALESCE(t.account, y.account) = m.account
+FULL OUTER JOIN one_month_ago_fallback mf
+    ON COALESCE(t.platform, y.platform) = mf.platform
+    AND COALESCE(t.account, y.account) = mf.account
+    AND m.platform IS NULL
+FULL OUTER JOIN one_year_ago yr
+    ON COALESCE(t.platform, y.platform, m.platform, mf.platform) = yr.platform
+    AND COALESCE(t.account, y.account, m.account, mf.account) = yr.account
+FULL OUTER JOIN one_year_ago_fallback yf
+    ON COALESCE(t.platform, y.platform, m.platform, mf.platform) = yf.platform
+    AND COALESCE(t.account, y.account, m.account, mf.account) = yf.account
+    AND yr.platform IS NULL
+GROUP BY COALESCE(
+    t.platform,
+    y.platform,
+    m.platform,
+    mf.platform,
+    yr.platform,
+    yf.platform
+)
+        """,
+                (now_nz,),
+            )
             result = cur.fetchall()
-            holdings = {row["platform"]: round(row["total"], 2) for row in result}
+
+            holdings = {row["platform"]: round(row["today"], 2) for row in result}
             total = round(sum(holdings.values()), 2)
             weights = {
-                key: round(100 * (value / total), 1) for key, value in holdings.items()
+                key: round(100 * (value / total), 1) if total else 0.0
+                for key, value in holdings.items()
             }
-            return {"holdings": holdings, "weightings": weights, "total": total}
+            yesterday_total = round(sum(row["yesterday"] for row in result), 2)
+            last_month_total = round(sum(row["one_month_ago"] for row in result), 2)
+            last_year_total = round(sum(row["one_year_ago"] for row in result), 2)
+
+            return {
+                "holdings": holdings,
+                "weightings": weights,
+                "total": total,
+                "yesterday_total": yesterday_total
+                if yesterday_total is not None
+                else None,
+                "pct_change": round(100 * total / yesterday_total - 100, 1)
+                if yesterday_total is not None
+                else None,
+                "month_over_month": round(100 * total / last_month_total - 100, 1)
+                if last_month_total is not None
+                else None,
+                "year_over_year": round(100 * total / last_year_total - 100, 1)
+                if last_year_total is not None
+                else None,
+            }
