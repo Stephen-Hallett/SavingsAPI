@@ -160,17 +160,20 @@ GROUP BY COALESCE(
                 row["platform"]: round(row["yesterday"], 2) for row in result
             }
             total = round(sum(holdings.values()), 2)
+            yesterday_total = round(sum(row["yesterday"] for row in result), 2)
+            last_month_total = round(sum(row["one_month_ago"] for row in result), 2)
+            last_year_total = round(sum(row["one_year_ago"] for row in result), 2)
+
             weights = {
                 key: round(100 * (value / total), 1) if total else 0.0
                 for key, value in holdings.items()
             }
             yesterday_weights = {
-                key: round(100 * (value / total), 1) if total else 0.0
+                key: round(100 * (value / yesterday_total), 1)
+                if yesterday_total
+                else 0.0
                 for key, value in yesterday_holdings.items()
             }
-            yesterday_total = round(sum(row["yesterday"] for row in result), 2)
-            last_month_total = round(sum(row["one_month_ago"] for row in result), 2)
-            last_year_total = round(sum(row["one_year_ago"] for row in result), 2)
 
             return {
                 "holdings": {"today": holdings, "yesterday": yesterday_holdings},
