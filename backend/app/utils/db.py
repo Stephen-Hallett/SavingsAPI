@@ -121,10 +121,10 @@ one_year_ago_fallback AS (
 )
 SELECT
     COALESCE(t.platform, y.platform, m.platform, mf.platform, yr.platform, yf.platform) AS platform,
-    COALESCE(MAX(t.amount), 0) AS today,
-    COALESCE(MAX(y.amount), 0) AS yesterday,
-    COALESCE(MAX(m.amount), MAX(mf.amount), 0) AS one_month_ago,
-    COALESCE(MAX(yr.amount), MAX(yf.amount), 0) AS one_year_ago
+    COALESCE(SUM(t.amount), 0) AS today,
+    COALESCE(SUM(y.amount), 0) AS yesterday,
+    COALESCE(SUM(m.amount), SUM(mf.amount), 0) AS one_month_ago,
+    COALESCE(SUM(yr.amount), SUM(yf.amount), 0) AS one_year_ago
 FROM today t
 FULL OUTER JOIN yesterday y
     ON t.platform = y.platform AND t.account = y.account
