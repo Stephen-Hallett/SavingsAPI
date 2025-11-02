@@ -2,6 +2,7 @@ import datetime
 import os
 from typing import Any
 
+import polars as pl
 import psycopg2
 import pytz
 from psycopg2.extras import RealDictCursor
@@ -80,115 +81,67 @@ daily_totals AS (
         %s::date - nz_date AS days_ago
     FROM latest_per_day
     WHERE rn = 1
-),
-today AS (
-    SELECT platform, account, amount
-    FROM daily_totals
-    WHERE days_ago = 0
-),
-yesterday AS (
-    SELECT platform, account, amount
-    FROM daily_totals
-    WHERE days_ago = 1
-),
-one_month_ago AS (
-    SELECT DISTINCT ON (platform, account)
-        platform, account, amount
-    FROM daily_totals
-    WHERE days_ago >= 30
-    ORDER BY platform, account, days_ago ASC
-),
-one_month_ago_fallback AS (
-    SELECT DISTINCT ON (platform, account)
-        platform, account, amount
-    FROM daily_totals
-    WHERE days_ago < 30
-    ORDER BY platform, account, days_ago DESC
-),
-one_year_ago AS (
-    SELECT DISTINCT ON (platform, account)
-        platform, account, amount
-    FROM daily_totals
-    WHERE days_ago >= 365
-    ORDER BY platform, account, days_ago ASC
-),
-one_year_ago_fallback AS (
-    SELECT DISTINCT ON (platform, account)
-        platform, account, amount
-    FROM daily_totals
-    WHERE days_ago < 365
-    ORDER BY platform, account, days_ago DESC
 )
-SELECT
-    COALESCE(t.platform, y.platform, m.platform, mf.platform, yr.platform, yf.platform) AS platform,
-    COALESCE(SUM(t.amount), 0) AS today,
-    COALESCE(SUM(y.amount), 0) AS yesterday,
-    COALESCE(SUM(m.amount), SUM(mf.amount), 0) AS one_month_ago,
-    COALESCE(SUM(yr.amount), SUM(yf.amount), 0) AS one_year_ago
-FROM today t
-FULL OUTER JOIN yesterday y
-    ON t.platform = y.platform AND t.account = y.account
-FULL OUTER JOIN one_month_ago m
-    ON COALESCE(t.platform, y.platform) = m.platform
-    AND COALESCE(t.account, y.account) = m.account
-FULL OUTER JOIN one_month_ago_fallback mf
-    ON COALESCE(t.platform, y.platform) = mf.platform
-    AND COALESCE(t.account, y.account) = mf.account
-    AND m.platform IS NULL
-FULL OUTER JOIN one_year_ago yr
-    ON COALESCE(t.platform, y.platform, m.platform, mf.platform) = yr.platform
-    AND COALESCE(t.account, y.account, m.account, mf.account) = yr.account
-FULL OUTER JOIN one_year_ago_fallback yf
-    ON COALESCE(t.platform, y.platform, m.platform, mf.platform) = yf.platform
-    AND COALESCE(t.account, y.account, m.account, mf.account) = yf.account
-    AND yr.platform IS NULL
-GROUP BY COALESCE(
-    t.platform,
-    y.platform,
-    m.platform,
-    mf.platform,
-    yr.platform,
-    yf.platform
-)
+
+SELECT *
+FROM daily_totals
         """,
                 (now_nz,),
             )
             result = cur.fetchall()
+            data = pl.from_dicts(result)
 
-            holdings = {row["platform"]: round(row["today"], 2) for row in result}
-            yesterday_holdings = {
-                row["platform"]: round(row["yesterday"], 2) for row in result
-            }
-            total = round(sum(holdings.values()), 2)
-            yesterday_total = round(sum(row["yesterday"] for row in result), 2)
-            last_month_total = round(sum(row["one_month_ago"] for row in result), 2)
-            last_year_total = round(sum(row["one_year_ago"] for row in result), 2)
+            def past_data(data: pl.DataFrame, days_ago: int) -> pl.DataFrame:
+                return (
+                    data.filter(pl.col.days_ago >= days_ago)
+                    .group_by(["platform", "account"])
+                    .agg(pl.col.days_ago.min())
+                    .join(data, on=["platform", "account", "days_ago"])
+                    .group_by("platform")
+                    .agg(pl.col.amount.sum())
+                )
 
-            weights = {
-                key: round(100 * (value / total), 1) if total else 0.0
-                for key, value in holdings.items()
-            }
-            yesterday_weights = {
-                key: round(100 * (value / yesterday_total), 1)
-                if yesterday_total
-                else 0.0
-                for key, value in yesterday_holdings.items()
-            }
+            today = past_data(data, 0)
+            yesterday = past_data(data, 1)
+            last_week = past_data(data, 7)
+            last_month = past_data(data, 30)
+            last_year = past_data(data, 365)
+
+            today_total = round(today["amount"].sum())
+            yesterday_total = round(yesterday["amount"].sum())
+
+            today_weights = today.with_columns((pl.col.amount / today_total).round(2))
+            yesterday_weights = yesterday.with_columns(
+                (pl.col.amount / yesterday_total).round(2)
+            )
 
             return {
-                "holdings": {"today": holdings, "yesterday": yesterday_holdings},
-                "weightings": {"today": weights, "yesterday": yesterday_weights},
-                "total": total,
-                "yesterday_total": yesterday_total
-                if yesterday_total is not None
+                "holdings": {
+                    "today": dict(today.rows()),
+                    "yesterday": dict(yesterday.rows()),
+                },
+                "weightings": {
+                    "today": dict(today_weights.rows()),
+                    "yesterday": dict(yesterday_weights.rows()),
+                },
+                "total": today_total,
+                "yesterday_total": yesterday_total,
+                "pct_change": round(100 * today_total / yesterday_total - 100, 1)
+                if yesterday.shape[0] > 0
                 else None,
-                "pct_change": round(100 * total / yesterday_total - 100, 1)
-                if yesterday_total is not None
+                "week_over_week": round(
+                    100 * today_total / last_week["amount"].sum() - 100, 1
+                )
+                if last_week.shape[0] > 0
                 else None,
-                "month_over_month": round(100 * total / last_month_total - 100, 1)
-                if last_month_total is not None
+                "month_over_month": round(
+                    100 * today_total / last_month["amount"].sum() - 100, 1
+                )
+                if last_month.shape[0] > 0
                 else None,
-                "year_over_year": round(100 * total / last_year_total - 100, 1)
-                if last_year_total is not None
+                "year_over_year": round(
+                    100 * today_total / last_year["amount"].sum() - 100, 1
+                )
+                if last_year.shape[0] > 0
                 else None,
             }
