@@ -51,7 +51,7 @@ class SavingsDB:
             )
             conn.commit()
 
-    def current_portfolio(self) -> dict[str, dict | float]:
+    def current_portfolio(self) -> dict[str, (None, dict)]:
         # Pacific/Auckland timezone
         now_nz = datetime.datetime.now(tz=pytz.timezone("Pacific/Auckland"))
 
