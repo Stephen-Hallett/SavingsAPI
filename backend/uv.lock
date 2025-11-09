@@ -431,6 +431,11 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/9f/4c/21a227b722534404241c2a76beceb7463469d50c775a227fc5c209eb8adc/polars-1.35.1-py3-none-any.whl", hash = "sha256:c29a933f28aa330d96a633adbd79aa5e6a6247a802a720eead9933f4613bdbf4", size = 783598, upload-time = "2025-10-30T12:11:54.668Z" },
 ]
 
+[package.optional-dependencies]
+rtcompat = [
+    { name = "polars-runtime-compat" },
+]
+
 [[package]]
 name = "polars-runtime-32"
 version = "1.35.1"
@@ -443,6 +448,20 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/22/55/81c5b266a947c339edd7fbaa9e1d9614012d02418453f48b76cc177d3dd9/polars_runtime_32-1.35.1-cp39-abi3-manylinux_2_24_aarch64.whl", hash = "sha256:c873aeb36fed182d5ebc35ca17c7eb193fe83ae2ea551ee8523ec34776731390", size = 37853058, upload-time = "2025-10-30T12:12:08.342Z" },
     { url = "https://files.pythonhosted.org/packages/6c/58/be8b034d559eac515f52408fd6537be9bea095bc0388946a4e38910d3d50/polars_runtime_32-1.35.1-cp39-abi3-win_amd64.whl", hash = "sha256:35cde9453ca7032933f0e58e9ed4388f5a1e415dd0db2dd1e442c81d815e630c", size = 41289554, upload-time = "2025-10-30T12:12:11.104Z" },
     { url = "https://files.pythonhosted.org/packages/f4/7f/e0111b9e2a1169ea82cde3ded9c92683e93c26dfccd72aee727996a1ac5b/polars_runtime_32-1.35.1-cp39-abi3-win_arm64.whl", hash = "sha256:fd77757a6c9eb9865c4bfb7b07e22225207c6b7da382bd0b9bd47732f637105d", size = 36958878, upload-time = "2025-10-30T12:12:15.206Z" },
+]
+
+[[package]]
+name = "polars-runtime-compat"
+version = "1.35.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/44/cf/949bde10dd338d58d60b674bdf5b001e5a26bbf87f5057ab63add4d4fb94/polars_runtime_compat-1.35.1.tar.gz", hash = "sha256:a66b5365be0f46b83382c65529c5088ef3762859ac2f3410beb1de6084e249f5", size = 2695468, upload-time = "2025-10-30T12:12:58.966Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0f/89/1866f0fbb3feff206a969f62fde20720221bfed042fcb2922ea91ee6208a/polars_runtime_compat-1.35.1-cp39-abi3-macosx_10_12_x86_64.whl", hash = "sha256:a4a4a6348748336fd304ccbe328a666194e53540cdb92b85d108f69f299fc1b6", size = 40269386, upload-time = "2025-10-30T12:12:35.559Z" },
+    { url = "https://files.pythonhosted.org/packages/d4/04/e8fb9dbb328f39e83c16655b4fa204b1f8089cc31813ff8163bf4d0e5d91/polars_runtime_compat-1.35.1-cp39-abi3-macosx_11_0_arm64.whl", hash = "sha256:3794cb1401dd0d5ff8c5041f54de1681dd04c0e188a4f63cafab267ac1525057", size = 36701757, upload-time = "2025-10-30T12:12:38.666Z" },
+    { url = "https://files.pythonhosted.org/packages/d4/e7/6caea640128384ad562b41d93628295a9a95c6ecc8094941249430e8dea8/polars_runtime_compat-1.35.1-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c920ebfef08d49c986286da040abbced7313d0227cfdee0659b38bd9162782fe", size = 41091635, upload-time = "2025-10-30T12:12:41.452Z" },
+    { url = "https://files.pythonhosted.org/packages/96/9e/521522e21e691f26be64775625c92146d940c67b2412bdf222a4a3e59336/polars_runtime_compat-1.35.1-cp39-abi3-manylinux_2_24_aarch64.whl", hash = "sha256:0445c967eb9e58185c63848301e916bb4440b76d86762afb83e08cf0099816dc", size = 37852863, upload-time = "2025-10-30T12:12:44.431Z" },
+    { url = "https://files.pythonhosted.org/packages/90/10/95b3df8f285a81e8692d85f55aaa24e1e2d2350d823960b559cfc76ab0a6/polars_runtime_compat-1.35.1-cp39-abi3-win_amd64.whl", hash = "sha256:b2a5b8d5ed8fee7e5711a03e6aae196152fd19fdeaf2c530ed65ab87787fd2b4", size = 41036560, upload-time = "2025-10-30T12:12:47.201Z" },
+    { url = "https://files.pythonhosted.org/packages/8f/03/00a7aee179bf04407ff42e5ced0bd577d96ff77efb78ce54c46560057232/polars_runtime_compat-1.35.1-cp39-abi3-win_arm64.whl", hash = "sha256:a8775c9b55e90ba575816318290a16eb7e68cf59e06684205e52a12a2f7c2114", size = 36957824, upload-time = "2025-10-30T12:12:49.876Z" },
 ]
 
 [[package]]
@@ -696,7 +715,7 @@ dependencies = [
     { name = "apscheduler" },
     { name = "fastapi", extra = ["standard"] },
     { name = "pandas" },
-    { name = "polars" },
+    { name = "polars", extra = ["rtcompat"] },
     { name = "psycopg2-binary" },
     { name = "pydantic-settings" },
     { name = "pytz" },
@@ -708,7 +727,7 @@ requires-dist = [
     { name = "apscheduler", specifier = ">=3.11.0" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.118.0" },
     { name = "pandas", specifier = ">=2.3.3" },
-    { name = "polars", specifier = ">=1.35.1" },
+    { name = "polars", extras = ["rtcompat"], specifier = ">=1.35.1" },
     { name = "psycopg2-binary", specifier = ">=2.9.10" },
     { name = "pydantic-settings", specifier = ">=2.11.0" },
     { name = "pytz", specifier = ">=2025.2" },
