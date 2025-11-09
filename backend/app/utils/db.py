@@ -99,7 +99,7 @@ FROM daily_totals
                     .join(data, on=["platform", "account", "days_ago"])
                     .group_by("platform")
                     .agg(pl.col.amount.sum().round(2))
-                    .sort(by="platform", descending=True)
+                    .sort(by="platform", descending=False)
                 )
 
             today = past_data(data, 0)
