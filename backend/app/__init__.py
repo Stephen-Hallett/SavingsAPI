@@ -37,7 +37,7 @@ app.include_router(InvestnowRouter, prefix="/investnow")
 
 
 @app.get("/portfolio")
-def portfolio_value() -> dict[str, dict | float]:
+def portfolio_value() -> dict[str, dict | float | None]:
     print("Getting portfolio value")
     return db_con.current_portfolio()
 
