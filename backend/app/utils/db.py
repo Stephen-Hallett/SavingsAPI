@@ -1,5 +1,6 @@
 import datetime
 import os
+from pprint import pprint
 from typing import Any
 
 import polars as pl
@@ -54,6 +55,7 @@ class SavingsDB:
     def current_portfolio(self) -> dict[str, (None, dict)]:
         # Pacific/Auckland timezone
         now_nz = datetime.datetime.now(tz=pytz.timezone("Pacific/Auckland"))
+        now_nz = "2025-11-13"
 
         with (
             self.get_connection() as conn,
@@ -85,6 +87,7 @@ daily_totals AS (
 
 SELECT *
 FROM daily_totals
+WHERE days_ago >= 0
         """,
                 (now_nz,),
             )
@@ -146,3 +149,9 @@ FROM daily_totals
                 if last_year.shape[0] > 0
                 else None,
             }
+
+
+if __name__ == "__main__":
+    db = SavingsDB()
+    portfolio = db.current_portfolio()
+    pprint(portfolio)
