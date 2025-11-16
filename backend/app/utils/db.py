@@ -55,7 +55,6 @@ class SavingsDB:
     def current_portfolio(self) -> dict[str, (None, dict)]:
         # Pacific/Auckland timezone
         now_nz = datetime.datetime.now(tz=pytz.timezone("Pacific/Auckland"))
-        now_nz = "2025-11-13"
 
         with (
             self.get_connection() as conn,
