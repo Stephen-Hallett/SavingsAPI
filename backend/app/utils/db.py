@@ -149,6 +149,74 @@ WHERE days_ago >= 0
                 else None,
             }
 
+    def get_history(self, history_days: int) -> list[dict[str, datetime.date | float]]:
+        now_nz = datetime.datetime.now(tz=pytz.timezone("Pacific/Auckland"))
+
+        with (
+            self.get_connection() as conn,
+            conn.cursor(cursor_factory=RealDictCursor) as cur,
+        ):
+            # Get latest for each account/platform for today and yesterday (NZ time)
+            cur.execute(
+                """
+        WITH latest_per_day AS (
+            SELECT
+                *,
+                ROW_NUMBER() OVER (
+                    PARTITION BY account, platform, timezone('Pacific/Auckland', time)::date
+                    ORDER BY time DESC
+                ) AS rn,
+                timezone('Pacific/Auckland', time)::date AS nz_date
+            FROM savings
+        ),
+        daily_totals AS (
+            SELECT
+                platform,
+                account,
+                amount,
+                nz_date,
+                %s::date - nz_date AS days_ago
+            FROM latest_per_day
+            WHERE rn = 1
+        )
+
+        SELECT *
+        FROM daily_totals
+        WHERE days_ago >= 0 and days_ago <= %s
+                """,
+                (now_nz, history_days),
+            )
+            result = cur.fetchall()
+            data = pl.from_dicts(result)
+
+        all_platforms = data[["platform", "account"]].unique()
+        index = pl.DataFrame(
+            [
+                {"days_ago": i, "nz_date": now_nz.date() - datetime.timedelta(days=i)}
+                for i in range(history_days + 1)
+            ]
+        )
+        history_index = all_platforms.join(index, how="cross")
+
+        data = (
+            data.join(
+                history_index,
+                on=["platform", "account", "days_ago", "nz_date"],
+                how="right",
+            )
+            .sort("days_ago", "platform", "account")
+            .with_columns(
+                amount=pl.col.amount.forward_fill()
+                .backward_fill()
+                .over(["platform", "account"]),
+                investment=pl.concat_str(["platform", "account"], separator=" - "),
+            )
+            .select("nz_date", "investment", "amount")
+        )
+
+        history = data.pivot(on="investment", index="nz_date", values="amount")
+        return history.to_dicts()
+
 
 if __name__ == "__main__":
     db = SavingsDB()
