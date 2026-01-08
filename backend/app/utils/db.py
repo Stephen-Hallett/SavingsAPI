@@ -206,9 +206,7 @@ WHERE days_ago >= 0
             )
             .sort("days_ago", "platform", "account")
             .with_columns(
-                amount=pl.col.amount.forward_fill()
-                .backward_fill()
-                .over(["platform", "account"]),
+                amount=pl.col.amount.forward_fill().over(["platform", "account"]),
                 investment=pl.concat_str(["platform", "account"], separator=" - "),
             )
             .select("nz_date", "investment", "amount")
