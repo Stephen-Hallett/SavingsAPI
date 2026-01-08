@@ -57,7 +57,7 @@ def save_portfolio() -> str:
 @app.get("/history")
 def history(
     days: int = 0, months: int = 0, years: int = 0
-) -> dict[str, float | str | date]:
+) -> list[dict[str, float | str | date]]:
     print("Getting portfolio history")
     history_days = days + months * 30 + years * 365  # Not perfect, but fine
     return db_con.get_history(history_days)
