@@ -149,7 +149,9 @@ WHERE days_ago >= 0
                 else None,
             }
 
-    def get_history(self, history_days: int) -> list[dict[str, datetime.date | float]]:
+    def get_history(
+        self, history_days: int
+    ) -> list[dict[str, datetime.date | float | None]]:
         now_nz = datetime.datetime.now(tz=pytz.timezone("Pacific/Auckland"))
 
         with (
