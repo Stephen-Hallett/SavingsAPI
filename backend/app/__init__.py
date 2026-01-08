@@ -1,4 +1,4 @@
-from datetime.datetime import date
+from datetime import date
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -52,6 +52,7 @@ def save_portfolio() -> str:
     save_sharesies()
     save_simplicity()
     return "Portfolio Updated"
+
 
 @app.get("/history")
 def history(
