@@ -206,7 +206,7 @@ WHERE days_ago >= 0
                 on=["platform", "account", "days_ago", "nz_date"],
                 how="right",
             )
-            .sort("days_ago", "platform", "account")
+            .sort("days_ago", "platform", "account", descending=True, nulls_last=True)
             .with_columns(
                 amount=pl.col.amount.forward_fill().over(["platform", "account"]),
                 investment=pl.concat_str(["platform", "account"], separator=" - "),
