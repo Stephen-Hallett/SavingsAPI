@@ -217,6 +217,31 @@ WHERE days_ago >= 0
         history = data.pivot(on="investment", index="nz_date", values="amount")
         return history.to_dicts()
 
+    def get_history_percentage(
+        self, history_days: int
+    ) -> list[dict[str, datetime.date | float | None]]:
+        history = pl.DataFrame(self.get_history(history_days))
+        lagged = history.clone()
+        lagged = lagged.with_columns(
+            lagged_date=pl.col.nz_date + datetime.timedelta(days=1)
+        )
+        joined_lag = history.join(
+            lagged, left_on="nz_date", right_on="lagged_date", how="left"
+        )
+
+        investments = [
+            col
+            for col in joined_lag.columns
+            if ("nz_date" not in col) and ("_right" not in col)
+        ]
+
+        for inv in investments:
+            joined_lag = joined_lag.with_columns(
+                (pl.col(inv) / pl.col(inv + "_right")).cum_prod().alias(inv)
+            )
+
+        return joined_lag.select(~pl.selectors.contains("_right")).to_dicts()
+
 
 if __name__ == "__main__":
     db = SavingsDB()

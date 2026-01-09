@@ -63,6 +63,15 @@ def history(
     return db_con.get_history(history_days)
 
 
+@app.get("/history/returns")
+def history_returns(
+    days: int = 0, months: int = 0, years: int = 0
+) -> list[dict[str, float | str | date | None]]:
+    print("Getting portfolio returns history")
+    history_days = days + months * 30 + years * 365  # Not perfect, but fine
+    return db_con.get_history_percentage(history_days)
+
+
 @app.get("/health")
 def health_check() -> dict[str, str]:
     return {"status": "healthy"}
