@@ -46,7 +46,7 @@ function Dashboard() {
   const [error, setError] = useState(null);
   const [stats, setStats] = useState(null);
   const [years, setYears] = useState(0);
-  const [months, setMonths] = useState(6);
+  const [months, setMonths] = useState(3);
 
   useEffect(() => {
     fetchData();
