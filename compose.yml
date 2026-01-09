@@ -66,6 +66,26 @@ services:
     networks:
       - transaction_network
   
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    environment:
+      REACT_APP_BACKEND_PORT: ${BACKEND_PORT}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    restart: always
+    networks:
+      - transaction_network
+    stdin_open: true
+    tty: true
+
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: pgadmin
