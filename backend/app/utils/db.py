@@ -190,6 +190,7 @@ WHERE days_ago >= 0
             )
             result = cur.fetchall()
             data = pl.from_dicts(result)
+            pprint(data)  # NOQA
 
         all_platforms = data[["platform", "account"]].unique()
         index = pl.DataFrame(
