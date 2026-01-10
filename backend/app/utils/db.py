@@ -214,8 +214,10 @@ WHERE days_ago >= 0
             )
             .select("nz_date", "investment", "amount")
         )
+        pprint(data)  # NOQA
 
         history = data.pivot(on="investment", index="nz_date", values="amount")
+        pprint(history)  # NOQA
         return history.to_dicts()
 
     def get_history_percentage(
