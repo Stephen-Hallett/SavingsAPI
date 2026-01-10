@@ -201,6 +201,14 @@ WHERE days_ago >= 0
         )
         history_index = all_platforms.join(index, how="cross")
 
+        pprint(  # NOQA
+            data.join(
+                history_index,
+                on=["platform", "account", "days_ago", "nz_date"],
+                how="right",
+            ).sort("days_ago", "platform", "account", descending=True, nulls_last=True)
+        )
+
         data = (
             data.join(
                 history_index,
