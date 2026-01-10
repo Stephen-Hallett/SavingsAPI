@@ -189,7 +189,6 @@ WHERE days_ago >= 0
             )
             result = cur.fetchall()
             data = pl.from_dicts(result)
-            pprint(data)  # NOQA
 
         all_platforms = data[["platform", "account"]].unique()
         index = pl.DataFrame(
@@ -199,12 +198,6 @@ WHERE days_ago >= 0
             ]
         )
         history_index = all_platforms.join(index, how="cross")
-
-        pprint(  # NOQA
-            data.join(
-                history_index, on=["platform", "account", "days_ago"], how="right"
-            ).sort("days_ago", "platform", "account", descending=True, nulls_last=True)
-        )
 
         data = (
             data.join(
@@ -217,10 +210,8 @@ WHERE days_ago >= 0
             )
             .select("nz_date", "investment", "amount")
         )
-        pprint(data)  # NOQA
 
         history = data.pivot(on="investment", index="nz_date", values="amount")
-        pprint(history)  # NOQA
         return history.to_dicts()
 
     def get_history_percentage(
