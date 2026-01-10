@@ -176,7 +176,6 @@ WHERE days_ago >= 0
                 platform,
                 account,
                 amount,
-                nz_date,
                 %s::date - nz_date AS days_ago
             FROM latest_per_day
             WHERE rn = 1
@@ -203,17 +202,13 @@ WHERE days_ago >= 0
 
         pprint(  # NOQA
             data.join(
-                history_index,
-                on=["platform", "account", "days_ago", "nz_date"],
-                how="right",
+                history_index, on=["platform", "account", "days_ago"], how="right"
             ).sort("days_ago", "platform", "account", descending=True, nulls_last=True)
         )
 
         data = (
             data.join(
-                history_index,
-                on=["platform", "account", "days_ago", "nz_date"],
-                how="right",
+                history_index, on=["platform", "account", "days_ago"], how="right"
             )
             .sort("days_ago", "platform", "account", descending=True, nulls_last=True)
             .with_columns(
