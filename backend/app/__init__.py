@@ -72,6 +72,12 @@ def history_returns(
     return db_con.get_history_percentage(history_days)
 
 
+@app.get("/expired")
+def expired() -> None:
+    print("Accounting for expired investments")
+    return db_con.identify_expired()
+
+
 @app.get("/health")
 def health_check() -> dict[str, str]:
     return {"status": "healthy"}

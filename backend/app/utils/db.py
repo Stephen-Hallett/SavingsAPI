@@ -239,6 +239,46 @@ WHERE days_ago >= 0
 
         return joined_lag.select(~pl.selectors.contains("_right")).to_dicts()
 
+    def identify_expired(self, expiry_days: int = 5) -> None:
+        with (
+            self.get_connection() as conn,
+            conn.cursor(cursor_factory=RealDictCursor) as cur,
+        ):
+            cur.execute(
+                """
+INSERT INTO savings (time, platform, account, amount)
+WITH most_recent AS (
+    SELECT
+        platform,
+        account,
+        MAX(time) AS datetime
+    FROM savings
+    GROUP BY platform, account
+),
+most_recent_with_amount AS (
+    SELECT
+        mr.platform,
+        mr.account,
+        mr.datetime,
+        s.amount
+    FROM most_recent mr
+    JOIN savings s
+        ON mr.platform = s.platform
+        AND mr.account = s.account
+        AND mr.datetime = s.time
+)
+SELECT
+	CURRENT_TIMESTAMP AS time,
+    platform,
+    account,
+    0 AS amount
+FROM most_recent_with_amount
+WHERE (CURRENT_DATE - datetime) > INTERVAL '%s days'
+    AND amount != 0
+                        """,
+                (expiry_days,),
+            )
+
 
 if __name__ == "__main__":
     db = SavingsDB()
