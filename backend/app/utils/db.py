@@ -268,7 +268,7 @@ most_recent_with_amount AS (
         AND mr.datetime = s.time
 )
 SELECT
-	CURRENT_TIMESTAMP AS time,
+	datetime + INTERVAL '1 day' AS time
     platform,
     account,
     0 AS amount
