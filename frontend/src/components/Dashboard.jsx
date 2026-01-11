@@ -47,16 +47,18 @@ function Dashboard() {
   const [stats, setStats] = useState(null);
   const [years, setYears] = useState(0);
   const [months, setMonths] = useState(3);
+  const [hideSensitive, setHideSensitive] = useState(true);
 
   useEffect(() => {
     fetchData();
-  }, [years, months]);
+  }, [years, months, hideSensitive]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       setError(null);
-      const url = `${API_URL}/history?years=${years}&months=${months}`;
+      const endpoint = hideSensitive ? "history/returns" : "history";
+      const url = `${API_URL}/${endpoint}?years=${years}&months=${months}`;
       console.log("Fetching from:", url);
       const response = await fetch(url);
       if (!response.ok) {
@@ -91,17 +93,42 @@ function Dashboard() {
           (key) => key !== "date"
         );
 
-        const totalLatest = investmentKeys.reduce(
-          (sum, key) => sum + (latest[key] || 0),
-          0
-        );
-        const totalOldest = investmentKeys.reduce(
-          (sum, key) => sum + (oldest[key] || 0),
-          0
-        );
-        const totalChange = totalLatest - totalOldest;
-        const totalChangePercent =
-          totalOldest > 0 ? ((totalChange / totalOldest) * 100).toFixed(2) : 0;
+        let totalLatest, totalOldest, totalChange, totalChangePercent;
+
+        if (hideSensitive) {
+          // For returns mode: values are cumulative return factors
+          // Calculate average return across all investments from oldest to latest
+          const latestReturns = investmentKeys.map((key) => {
+            const latestVal = latest[key] || 1.0;
+            const oldestVal = oldest[key] || 1.0;
+            // Calculate return: (latest / oldest - 1) * 100
+            return oldestVal !== 0 ? (latestVal / oldestVal - 1) * 100 : 0;
+          });
+          const avgReturn =
+            latestReturns.length > 0
+              ? latestReturns.reduce((sum, val) => sum + val, 0) /
+                latestReturns.length
+              : 0;
+          totalChangePercent = parseFloat(avgReturn.toFixed(2));
+          totalLatest = null; // Not shown in hideSensitive mode
+          totalOldest = null;
+          totalChange = null;
+        } else {
+          // For absolute values mode
+          totalLatest = investmentKeys.reduce(
+            (sum, key) => sum + (latest[key] || 0),
+            0
+          );
+          totalOldest = investmentKeys.reduce(
+            (sum, key) => sum + (oldest[key] || 0),
+            0
+          );
+          totalChange = totalLatest - totalOldest;
+          totalChangePercent =
+            totalOldest > 0
+              ? parseFloat(((totalChange / totalOldest) * 100).toFixed(2))
+              : 0;
+        }
 
         // Calculate period label
         const periodParts = [];
@@ -121,6 +148,7 @@ function Dashboard() {
           investmentKeys,
           latest,
           periodLabel,
+          isReturns: hideSensitive,
         });
       }
 
@@ -186,6 +214,53 @@ function Dashboard() {
             Investment Performance
           </h1>
           <div className="flex items-center gap-4">
+            <button
+              onClick={() => setHideSensitive(!hideSensitive)}
+              className="p-2 rounded-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+              title={
+                hideSensitive
+                  ? "Show sensitive information"
+                  : "Hide sensitive information"
+              }
+            >
+              {hideSensitive ? (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6 text-gray-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                  />
+                </svg>
+              ) : (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6 text-gray-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                  />
+                </svg>
+              )}
+            </button>
             <div className="flex items-center gap-2">
               <label
                 htmlFor="years"
@@ -235,41 +310,51 @@ function Dashboard() {
             {/* Total Value Card */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-lg font-semibold text-gray-700 mb-4">
-                Total Portfolio Value
+                {hideSensitive
+                  ? "Portfolio Performance"
+                  : "Total Portfolio Value"}
               </h2>
               <div className="space-y-4">
-                <div>
-                  <p className="text-sm text-gray-500">Current Value</p>
-                  <p className="text-3xl font-bold text-gray-900">
-                    $
-                    {stats?.totalLatest.toLocaleString("en-NZ", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    }) || "0.00"}
-                  </p>
-                </div>
+                {!hideSensitive && stats && stats.totalLatest !== null && (
+                  <div>
+                    <p className="text-sm text-gray-500">Current Value</p>
+                    <p className="text-3xl font-bold text-gray-900">
+                      $
+                      {stats.totalLatest.toLocaleString("en-NZ", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </p>
+                  </div>
+                )}
                 {stats && (
                   <div>
                     <p className="text-sm text-gray-500">
                       {stats.periodLabel.charAt(0).toUpperCase() +
                         stats.periodLabel.slice(1)}{" "}
-                      Change
+                      {hideSensitive ? "Return" : "Change"}
                     </p>
+                    {!hideSensitive &&
+                      stats.totalChange !== null &&
+                      stats.totalChange !== undefined && (
+                        <p
+                          className={`text-2xl font-semibold ${
+                            stats.totalChange >= 0
+                              ? "text-green-600"
+                              : "text-red-600"
+                          }`}
+                        >
+                          {stats.totalChange >= 0 ? "+" : ""}$
+                          {stats.totalChange.toLocaleString("en-NZ", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </p>
+                      )}
                     <p
-                      className={`text-2xl font-semibold ${
-                        stats.totalChange >= 0
-                          ? "text-green-600"
-                          : "text-red-600"
-                      }`}
-                    >
-                      {stats.totalChange >= 0 ? "+" : ""}$
-                      {stats.totalChange.toLocaleString("en-NZ", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </p>
-                    <p
-                      className={`text-sm ${
+                      className={`${
+                        hideSensitive ? "text-3xl" : "text-sm"
+                      } font-bold ${
                         stats.totalChangePercent >= 0
                           ? "text-green-600"
                           : "text-red-600"
@@ -306,13 +391,29 @@ function Dashboard() {
                           {investment}
                         </span>
                       </div>
-                      <span className="text-sm font-semibold text-gray-900">
-                        $
-                        {(stats.latest[investment] || 0).toLocaleString(
-                          "en-NZ",
-                          { minimumFractionDigits: 2, maximumFractionDigits: 2 }
-                        )}
-                      </span>
+                      {hideSensitive ? (
+                        <span className="text-sm font-semibold text-gray-900">
+                          {((stats.latest[investment] || 1.0) - 1.0 >= 0
+                            ? "+"
+                            : "") +
+                            (
+                              ((stats.latest[investment] || 1.0) - 1.0) *
+                              100
+                            ).toFixed(2)}
+                          %
+                        </span>
+                      ) : (
+                        <span className="text-sm font-semibold text-gray-900">
+                          $
+                          {(stats.latest[investment] || 0).toLocaleString(
+                            "en-NZ",
+                            {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            }
+                          )}
+                        </span>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -356,15 +457,19 @@ function Dashboard() {
                   <YAxis
                     tick={{ fontSize: 12 }}
                     tickFormatter={(value) =>
-                      `$${value.toLocaleString("en-NZ")}`
+                      hideSensitive
+                        ? `${((value - 1) * 100).toFixed(1)}%`
+                        : `$${value.toLocaleString("en-NZ")}`
                     }
                   />
                   <Tooltip
                     formatter={(value) =>
-                      `$${value.toLocaleString("en-NZ", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}`
+                      hideSensitive
+                        ? `${((value - 1) * 100).toFixed(2)}%`
+                        : `$${value.toLocaleString("en-NZ", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}`
                     }
                     labelFormatter={(label) => {
                       const date = new Date(label);
