@@ -15,6 +15,7 @@ from .router.sharesies import router as SharesiesRouter
 from .router.sharesies import save_data as save_sharesies
 from .router.simplicity import router as SimplicityRouter
 from .router.simplicity import save_data as save_simplicity
+from .router.utility import router as UtilityRouter
 from .utils.db import SavingsDB
 from .utils.logger import MyLogger
 
@@ -36,6 +37,7 @@ app.include_router(KernelRouter, prefix="/kernel")
 app.include_router(SharesiesRouter, prefix="/sharesies")
 app.include_router(SimplicityRouter, prefix="/simplicity")
 app.include_router(InvestnowRouter, prefix="/investnow")
+app.include_router(UtilityRouter, prefix="/utility")
 
 
 @app.get("/portfolio")
@@ -70,12 +72,6 @@ def history_returns(
     print("Getting portfolio returns history")
     history_days = days + months * 30 + years * 365  # Not perfect, but fine
     return db_con.get_history_percentage(history_days)
-
-
-@app.get("/expired")
-def expired() -> None:
-    print("Accounting for expired investments")
-    return db_con.identify_expired()
 
 
 @app.get("/health")
