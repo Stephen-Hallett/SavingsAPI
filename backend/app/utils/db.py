@@ -234,9 +234,8 @@ WHERE days_ago >= 0
 
         for inv in investments:
             joined_lag = joined_lag.with_columns(
-                (pl.col(inv) / pl.col(inv + "_right")).cum_prod().alias(inv)
+                (pl.col(inv) / pl.col(inv + "_right")).cum_prod().fill_nan(0).alias(inv)
             )
-
         return joined_lag.select(~pl.selectors.contains("_right")).to_dicts()
 
     def identify_expired(self, expiry_days: int = 5) -> None:
