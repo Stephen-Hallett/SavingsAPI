@@ -20,20 +20,26 @@ tz = pytz.timezone("Pacific/Auckland")
 
 
 def save_data() -> None:
-    td_6 = SavingsRow(
-        time=datetime.now(tz=pytz.timezone("UTC")),
-        platform="ASB",
-        account="6 month term deposit",
-        amount=con.get_6_month_value(),
-    )
-    td_12 = SavingsRow(
-        time=datetime.now(tz=pytz.timezone("UTC")),
-        platform="ASB",
-        account="12 month term deposit",
-        amount=con.get_12_month_value(),
-    )
-    db_con.insert(td_6)
-    db_con.insert(td_12)
+    try:
+        td_6 = SavingsRow(
+            time=datetime.now(tz=pytz.timezone("UTC")),
+            platform="ASB",
+            account="6 month term deposit",
+            amount=con.get_6_month_value(),
+        )
+        db_con.insert(td_6)
+    except Exception as e:  # NOQA
+        print(e)
+    try:
+        td_12 = SavingsRow(
+            time=datetime.now(tz=pytz.timezone("UTC")),
+            platform="ASB",
+            account="12 month term deposit",
+            amount=con.get_12_month_value(),
+        )
+        db_con.insert(td_12)
+    except Exception as e:
+        print(e)
 
 
 @asynccontextmanager
