@@ -74,6 +74,7 @@ services:
     environment:
       REACT_APP_BACKEND_PORT: ${BACKEND_PORT}
       REACT_APP_API_URL: ${BACKEND_URL}
+      DANGEROUSLY_DISABLE_HOST_CHECK: "true"
     ports:
       - "3000:3000"
     depends_on:
