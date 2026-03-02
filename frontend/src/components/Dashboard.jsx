@@ -13,24 +13,44 @@ import {
 // Get API URL - construct from current host with backend port
 // The browser needs to use the host's address, not Docker container names
 const getApiUrl = () => {
-  // If explicitly set and it's a full URL (not a container name), use it
-  if (
-    process.env.REACT_APP_API_URL &&
-    process.env.REACT_APP_API_URL.startsWith("http")
-  ) {
-    return process.env.REACT_APP_API_URL;
-  }
+  const envUrl = process.env.REACT_APP_API_URL;
 
-  // For browser: use same host with backend port
-  // Use the backend port from environment variable, or default to 8181
+  // If we're running in the browser, we can detect HTTPS and avoid mixed content.
   if (typeof window !== "undefined") {
     const protocol = window.location.protocol;
     const hostname = window.location.hostname;
-    // Get port from REACT_APP_BACKEND_PORT env var, or default to 8181
+    const port = window.location.port;
+
+    // If an explicit HTTPS URL is provided, prefer it.
+    if (envUrl && envUrl.startsWith("https://")) {
+      return envUrl;
+    }
+
+    // If the page is served over HTTPS and the env URL is HTTP, browsers will block it
+    // as mixed content. In that case, ignore the HTTP env URL and fall back to same-origin.
+    if (protocol === "https:" && envUrl && envUrl.startsWith("http://")) {
+      return `${protocol}//${hostname}`;
+    }
+
+    // For HTTP (local / direct IP access), allow using the env URL directly if set.
+    if (protocol === "http:" && envUrl && envUrl.startsWith("http")) {
+      return envUrl;
+    }
+
+    // Otherwise, construct from current host. If we're on a standard port (80/443) or
+    // no port, assume reverse proxy and use same-origin. Otherwise, use backend port.
+    if (!port || port === "80" || port === "443") {
+      return `${protocol}//${hostname}`;
+    }
+
     const backendPort = process.env.REACT_APP_BACKEND_PORT || "8181";
     return `${protocol}//${hostname}:${backendPort}`;
   }
-  // Fallback (shouldn't happen in React)
+
+  // Fallback for non-browser environments
+  if (envUrl && envUrl.startsWith("http")) {
+    return envUrl;
+  }
   return "";
 };
 
@@ -47,18 +67,20 @@ function Dashboard() {
   const [stats, setStats] = useState(null);
   const [years, setYears] = useState(0);
   const [months, setMonths] = useState(3);
+  const [days, setDays] = useState(0);
   const [hideSensitive, setHideSensitive] = useState(true);
 
   useEffect(() => {
     fetchData();
-  }, [years, months, hideSensitive]);
+  }, [years, months, days, hideSensitive]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       setError(null);
-      const endpoint = hideSensitive ? "history/returns" : "history";
-      const url = `${API_URL}/${endpoint}?years=${years}&months=${months}`;
+      // Always fetch absolute history; we derive returns client-side so that
+      // percentages match between sensitive and non-sensitive modes.
+      const url = `${API_URL}/history?years=${years}&months=${months}&days=${days}`;
       console.log("Fetching from:", url);
       const response = await fetch(url);
       if (!response.ok) {
@@ -82,53 +104,76 @@ function Dashboard() {
       // Sort by date
       chartData.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-      setData(chartData);
-
-      // Calculate stats from the latest data point
+      // Work out investment keys (exclude date)
+      let investmentKeys = [];
       if (chartData.length > 0) {
-        const latest = chartData[chartData.length - 1];
-        const oldest = chartData[0];
-
-        const investmentKeys = Object.keys(latest).filter(
+        investmentKeys = Object.keys(chartData[0]).filter(
           (key) => key !== "date"
         );
+      }
 
-        let totalLatest, totalOldest, totalChange, totalChangePercent;
+      // Compute baseline (oldest) values for each investment for returns mode
+      const baselineByInvestment = {};
+      investmentKeys.forEach((key) => {
+        const firstWithValue = chartData.find(
+          (row) => row[key] !== null && row[key] !== undefined && row[key] !== 0
+        );
+        baselineByInvestment[key] = firstWithValue ? firstWithValue[key] : 0;
+      });
 
-        if (hideSensitive) {
-          // For returns mode: values are cumulative return factors
-          // Calculate average return across all investments from oldest to latest
-          const latestReturns = investmentKeys.map((key) => {
-            const latestVal = latest[key] || 1.0;
-            const oldestVal = oldest[key] || 1.0;
-            // Calculate return: (latest / oldest - 1) * 100
-            return oldestVal !== 0 ? (latestVal / oldestVal - 1) * 100 : 0;
-          });
-          const avgReturn =
-            latestReturns.length > 0
-              ? latestReturns.reduce((sum, val) => sum + val, 0) /
-                latestReturns.length
-              : 0;
-          totalChangePercent = parseFloat(avgReturn.toFixed(2));
-          totalLatest = null; // Not shown in hideSensitive mode
-          totalOldest = null;
-          totalChange = null;
-        } else {
-          // For absolute values mode
-          totalLatest = investmentKeys.reduce(
-            (sum, key) => sum + (latest[key] || 0),
-            0
-          );
-          totalOldest = investmentKeys.reduce(
-            (sum, key) => sum + (oldest[key] || 0),
-            0
-          );
-          totalChange = totalLatest - totalOldest;
-          totalChangePercent =
-            totalOldest > 0
-              ? parseFloat(((totalChange / totalOldest) * 100).toFixed(2))
-              : 0;
-        }
+      const baselineTotal = investmentKeys.reduce(
+        (sum, key) => sum + (baselineByInvestment[key] || 0),
+        0
+      );
+
+      // Absolute data with total line
+      const absoluteData = chartData.map((row) => {
+        const total = investmentKeys.reduce(
+          (sum, key) => sum + (row[key] || 0),
+          0
+        );
+        return { ...row, Total: total };
+      });
+
+      // Returns data (cumulative return factors) with total factor
+      const returnsData = chartData.map((row) => {
+        const valueTotal = investmentKeys.reduce(
+          (sum, key) => sum + (row[key] || 0),
+          0
+        );
+        const totalFactor =
+          baselineTotal > 0 ? valueTotal / baselineTotal : 1.0;
+
+        const returnsRow = { date: row.date, Total: totalFactor };
+        investmentKeys.forEach((key) => {
+          const base = baselineByInvestment[key] || 0;
+          const current = row[key] || 0;
+          returnsRow[key] =
+            base > 0 ? current / base : 1.0; // factor relative to baseline
+        });
+        return returnsRow;
+      });
+
+      const chartDataWithTotal = hideSensitive ? returnsData : absoluteData;
+
+      setData(chartDataWithTotal);
+
+      // Calculate stats from absolute data so percentages match between modes
+      if (absoluteData.length > 0) {
+        const latestAbs = absoluteData[absoluteData.length - 1];
+        const oldestAbs = absoluteData[0];
+
+        const investmentKeysForStats = Object.keys(latestAbs).filter(
+          (key) => key !== "date" && key !== "Total"
+        );
+
+        const totalLatest = latestAbs.Total;
+        const totalOldest = oldestAbs.Total;
+        const totalChange = totalLatest - totalOldest;
+        const totalChangePercent =
+          totalOldest > 0
+            ? parseFloat(((totalChange / totalOldest) * 100).toFixed(2))
+            : 0;
 
         // Calculate period label
         const periodParts = [];
@@ -138,16 +183,23 @@ function Dashboard() {
         if (months > 0) {
           periodParts.push(`${months} ${months === 1 ? "month" : "months"}`);
         }
-        const periodLabel = periodParts.join(" and ") || "period";
+        if (days > 0) {
+          periodParts.push(`${days} ${days === 1 ? "day" : "days"}`);
+        }
+        const periodLabelWithDays = (() => {
+          return periodParts.join(" and ") || "period";
+        })();
 
         setStats({
           totalLatest,
           totalOldest,
           totalChange,
           totalChangePercent,
-          investmentKeys,
-          latest,
-          periodLabel,
+          investmentKeys: investmentKeysForStats,
+          latest: hideSensitive
+            ? returnsData[returnsData.length - 1]
+            : latestAbs,
+          periodLabel: periodLabelWithDays,
           isReturns: hideSensitive,
         });
       }
@@ -297,6 +349,26 @@ function Dashboard() {
                 {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((m) => (
                   <option key={m} value={m}>
                     {m}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <label
+                htmlFor="days"
+                className="text-sm font-medium text-gray-700"
+              >
+                Days:
+              </label>
+              <select
+                id="days"
+                value={days}
+                onChange={(e) => setDays(parseInt(e.target.value))}
+                className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
+              >
+                {[0, 7, 14, 30, 60, 90, 180, 365].map((d) => (
+                  <option key={d} value={d}>
+                    {d}
                   </option>
                 ))}
               </select>
@@ -456,6 +528,7 @@ function Dashboard() {
                   />
                   <YAxis
                     tick={{ fontSize: 12 }}
+                    domain={["dataMin", "dataMax"]}
                     tickFormatter={(value) =>
                       hideSensitive
                         ? `${((value - 1) * 100).toFixed(1)}%`
@@ -492,6 +565,17 @@ function Dashboard() {
                       name={investment}
                     />
                   ))}
+                  {/* Hidden Total series: available in tooltip but not drawn as its own line */}
+                  <Line
+                    type="monotone"
+                    dataKey="Total"
+                    stroke="#111827"
+                    strokeWidth={2.5}
+                    dot={false}
+                    name="Total"
+                    hide
+                    legendType="none"
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </div>
